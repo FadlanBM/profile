@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <defs>
+    <clipPath id="circleClip">
+      <circle cx="100" cy="100" r="95"/>
+    </clipPath>
+  </defs>
+  <!-- Shadow -->
+  <circle cx="104" cy="104" r="95" fill="#1A1A1A"/>
+  <!-- Base bg -->
+  <circle cx="100" cy="100" r="95" fill="#FDE047"/>
+  <circle cx="100" cy="100" r="95" fill="url(#grad)" opacity="0.3"/>
+  <!-- Inner border -->
+  <circle cx="100" cy="100" r="92" stroke="#1A1A1A" stroke-width="6"/>
+  <!-- Avatar body (head) -->
+  <g clip-path="url(#circleClip)">
+    <!-- Neck -->
+    <rect x="81" y="130" width="38" height="70" rx="6" fill="#D4A574"/>
+    <!-- Head -->
+    <rect x="68" y="55" width="64" height="70" rx="30" fill="#D4A574"/>
+    <!-- Hair -->
+    <rect x="62" y="40" width="76" height="50" rx="28" fill="#2D1B0E"/>
+    <path d="M70 65 Q70 38 100 38 Q130 38 130 65 L128 70 Q128 52 100 52 Q72 52 72 70 Z" fill="#2D1B0E"/>
+    <!-- Hair side -->
+    <rect x="62" y="52" width="16" height="40" rx="8" fill="#2D1B0E"/>
+    <rect x="122" y="52" width="16" height="40" rx="8" fill="#2D1B0E"/>
+    <!-- Eyes -->
+    <ellipse cx="87" cy="88" rx="7" ry="8" fill="white"/>
+    <ellipse cx="113" cy="88" rx="7" ry="8" fill="white"/>
+    <!-- Pupils -->
+    <ellipse cx="88" cy="88" rx="3.5" ry="4" fill="#1A1A1A"/>
+    <ellipse cx="114" cy="88" rx="3.5" ry="4" fill="#1A1A1A"/>
+    <!-- Eye shine -->
+    <circle cx="90" cy="86" r="1.5" fill="white"/>
+    <circle cx="116" cy="86" r="1.5" fill="white"/>
+    <!-- Eyebrows -->
+    <path d="M78 78 Q87 73 96 78" stroke="#1A1A1A" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    <path d="M104 78 Q113 73 122 78" stroke="#1A1A1A" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    <!-- Nose -->
+    <path d="M100 92 Q97 100 95 102 Q100 104 105 102 Q103 100 100 92" fill="#C49A6C"/>
+    <!-- Mouth (smile) -->
+    <path d="M88 110 Q94 118 100 118 Q106 118 112 110" stroke="#1A1A1A" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <!-- Glasses -->
+    <rect x="76" y="82" width="24" height="17" rx="5" stroke="#1A1A1A" stroke-width="2.5" fill="none"/>
+    <rect x="100" y="82" width="24" height="17" rx="5" stroke="#1A1A1A" stroke-width="2.5" fill="none"/>
+    <line x1="100" y1="90" x2="100" y2="90" stroke="#1A1A1A" stroke-width="2.5"/>
+    <path d="M76 86 L68 83" stroke="#1A1A1A" stroke-width="2" stroke-linecap="round"/>
+    <path d="M124 86 L132 83" stroke="#1A1A1A" stroke-width="2" stroke-linecap="round"/>
+    <!-- Body/clothing -->
+    <rect x="55" y="148" width="90" height="60" rx="12" fill="#1A1A1A"/>
+    <!-- Collar -->
+    <path d="M70 148 L100 168 L130 148" fill="#2D2D2D" stroke="#1A1A1A" stroke-width="1"/>
+  </g>
+  <!-- Bottom badge overlap -->
+  <rect x="50" y="170" width="100" height="24" rx="12" fill="#60A5FA" stroke="#1A1A1A" stroke-width="3"/>
+  <text x="100" y="187" text-anchor="middle" font-family="monospace" font-size="10" font-weight="bold" fill="#1A1A1A">DEVELOPER</text>
+</svg>
