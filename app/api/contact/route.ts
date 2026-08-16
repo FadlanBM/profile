@@ -6,12 +6,14 @@ export async function POST(request: Request) {
     const apiKey = process.env.RESEND_API_KEY;
     if (!apiKey) {
       return NextResponse.json(
-        { error: "Konfigurasi email (RESEND_API_KEY) belum diset di server." },
+        {
+          error:
+            "RESEND_API_KEY belum diset di Vercel (Project → Settings → Environment Variables).",
+        },
         { status: 500 }
       );
     }
 
-    const resend = new Resend(apiKey);
     const body = await request.json();
     const { name, email, message } = body;
 
@@ -22,6 +24,7 @@ export async function POST(request: Request) {
       );
     }
 
+    const resend = new Resend(apiKey);
     const { data, error } = await resend.emails.send({
       from: "Portfolio Contact <onboarding@resend.dev>",
       to: "fadlanbuwono@gmail.com",
@@ -31,17 +34,18 @@ export async function POST(request: Request) {
     });
 
     if (error) {
+      console.error("Resend send error:", JSON.stringify(error));
       return NextResponse.json(
-        { error: "Gagal mengirim email. Silakan coba lagi." },
+        { error: error.message || "Gagal mengirim email. Silakan coba lagi." },
         { status: 500 }
       );
     }
 
     return NextResponse.json({ success: true, id: data?.id });
-  } catch {
-    return NextResponse.json(
-      { error: "Gagal mengirim email. Silakan coba lagi." },
-      { status: 500 }
-    );
+  } catch (err) {
+    console.error("Contact API error:", err);
+    const message =
+      err instanceof Error ? err.message : "Gagal mengirim email. Silakan coba lagi.";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
