@@ -19,6 +19,7 @@ interface HeroData {
   profile_image: string;
   greeting_en: string;
   description_en: string;
+  cv_url: string;
 }
 
 const defaultHero: HeroData = {
@@ -34,6 +35,7 @@ const defaultHero: HeroData = {
   profile_image: "/profile.JPG",
   greeting_en: "HELLO, I'M FADLAN 👋",
   description_en: "Full-stack developer turning complex ideas into fast, clear, and memorable digital products.",
+  cv_url: "",
 };
 
 const SKILL_COLORS = [
@@ -100,11 +102,21 @@ export const Hero: React.FC = () => {
                   {t("hero.view_projects")} <ArrowDown className="w-5 h-5" />
                 </Button>
               </a>
-              <a href="#cv" onClick={(e) => { e.preventDefault(); alert("CV Download link clicked!"); }}>
-                <Button variant="white" size="lg">
+              {hero.cv_url ? (
+                <a href={hero.cv_url} target="_blank" rel="noreferrer">
+                  <Button variant="white" size="lg">
+                    {t("hero.download_cv")} <Download className="w-5 h-5" />
+                  </Button>
+                </a>
+              ) : (
+                <Button
+                  variant="white"
+                  size="lg"
+                  onClick={() => alert("File CV belum di-upload oleh Admin.")}
+                >
                   {t("hero.download_cv")} <Download className="w-5 h-5" />
                 </Button>
-              </a>
+              )}
             </div>
 
             {/* Social Links */}

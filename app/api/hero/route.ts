@@ -15,6 +15,7 @@ export interface HeroData {
   profile_image: string;
   greeting_en: string;
   description_en: string;
+  cv_url: string;
 }
 
 export async function GET() {
@@ -62,6 +63,7 @@ export async function PUT(request: Request) {
       profile_image,
       greeting_en,
       description_en,
+      cv_url,
     } = body;
 
     if (!greeting || !title_line1 || !title_highlight || !title_line2) {
@@ -75,8 +77,8 @@ export async function PUT(request: Request) {
 
     await db.execute({
       sql: `
-        INSERT INTO hero (id, greeting, title_line1, title_highlight, title_line2, description, availability_badge, location, role, skills, profile_image, greeting_en, description_en)
-        VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO hero (id, greeting, title_line1, title_highlight, title_line2, description, availability_badge, location, role, skills, profile_image, greeting_en, description_en, cv_url)
+        VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
           greeting = excluded.greeting,
           title_line1 = excluded.title_line1,
@@ -89,7 +91,8 @@ export async function PUT(request: Request) {
           skills = excluded.skills,
           profile_image = excluded.profile_image,
           greeting_en = excluded.greeting_en,
-          description_en = excluded.description_en
+          description_en = excluded.description_en,
+          cv_url = excluded.cv_url
       `,
       args: [
         greeting,
@@ -104,6 +107,7 @@ export async function PUT(request: Request) {
         profile_image || "/profile.JPG",
         greeting_en || "",
         description_en || "",
+        cv_url || "",
       ],
     });
 

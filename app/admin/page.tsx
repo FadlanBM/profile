@@ -131,6 +131,7 @@ export default function AdminDashboard() {
     profile_image: "/profile.JPG",
     greeting_en: "",
     description_en: "",
+    cv_url: "",
   });
   const [heroLoaded, setHeroLoaded] = useState(false);
 
@@ -184,6 +185,7 @@ export default function AdminDashboard() {
           profile_image: hero.profile_image || "/profile.JPG",
           greeting_en: hero.greeting_en || "",
           description_en: hero.description_en || "",
+          cv_url: hero.cv_url || "",
         });
       }
     }
@@ -468,6 +470,24 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleCvUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const res = await fetch("/api/upload", { method: "POST", body: formData });
+    if (res.ok) {
+      const data = await res.json();
+      setHeroData({ ...heroData, cv_url: data.url });
+      alert("CV berhasil diupload! Jangan lupa klik SIMPAN HERO.");
+    } else {
+      const data = await res.json().catch(() => null);
+      alert(data?.error || "Gagal mengupload CV.");
+    }
+  };
+
   const handleSaveHero = async () => {
     if (!confirm("Yakin ingin menyimpan perubahan data Hero?")) return;
     const skills = heroData.skillsStr
@@ -491,6 +511,7 @@ export default function AdminDashboard() {
         profile_image: heroData.profile_image,
         greeting_en: heroData.greeting_en,
         description_en: heroData.description_en,
+        cv_url: heroData.cv_url,
       }),
     });
 
@@ -1359,6 +1380,35 @@ export default function AdminDashboard() {
                   onChange={(e) => setHeroData({ ...heroData, profile_image: e.target.value })}
                   className="px-4 py-2.5 border-3 border-[#1A1A1A] rounded-md font-mono text-sm bg-[#FEFBF6] shadow-brutal-sm"
                 />
+              </div>
+
+              {/* CV Upload */}
+              <div className="flex flex-col gap-2">
+                <label className="font-mono text-xs font-bold uppercase">CV / RESUME (PDF)</label>
+                <div className="flex items-center gap-3">
+                  <label className="cursor-pointer inline-flex items-center gap-2 font-mono text-xs font-bold text-[#1A1A1A] bg-[#E0F2FE] border-2 border-[#1A1A1A] rounded px-3 py-2 hover:bg-[#BFDBFE] transition-colors">
+                    <Upload className="w-3.5 h-3.5" /> UPLOAD PDF
+                    <input
+                      type="file"
+                      accept="application/pdf"
+                      className="hidden"
+                      onChange={handleCvUpload}
+                    />
+                  </label>
+                  {heroData.cv_url && (
+                    <a
+                      href={heroData.cv_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-mono text-xs font-bold text-[#60A5FA] underline hover:text-[#3B82F6] truncate max-w-[220px]"
+                    >
+                      LIHAT CV
+                    </a>
+                  )}
+                </div>
+                {heroData.cv_url && (
+                  <p className="font-mono text-[10px] text-[#1A1A1A]/60 break-all">{heroData.cv_url}</p>
+                )}
               </div>
 
               {/* Preview */}

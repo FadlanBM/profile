@@ -68,9 +68,17 @@ export async function initDB() {
       skills TEXT NOT NULL,
       profile_image TEXT NOT NULL DEFAULT '/profile.JPG',
       greeting_en TEXT NOT NULL DEFAULT '',
-      description_en TEXT NOT NULL DEFAULT ''
+      description_en TEXT NOT NULL DEFAULT '',
+      cv_url TEXT NOT NULL DEFAULT ''
     );
   `);
+
+  // Auto-migration: ensure cv_url column exists in hero table if created previously
+  try {
+    await db.execute("ALTER TABLE hero ADD COLUMN cv_url TEXT NOT NULL DEFAULT ''");
+  } catch {
+    // Column already exists
+  }
 
   // Create Certificates Table
   await db.execute(`
