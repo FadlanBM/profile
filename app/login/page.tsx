@@ -2,15 +2,15 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Lock, User, LogIn, ArrowLeft, ShieldAlert } from "lucide-react";
+import { Lock, User, LogIn, ArrowLeft } from "lucide-react";
 import { Card } from "@/app/components/ui/Card";
 import { Button } from "@/app/components/ui/Button";
 import { Badge } from "@/app/components/ui/Badge";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [username, setUsername] = useState("admin");
-  const [password, setPassword] = useState("admin123");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -61,15 +61,6 @@ export default function LoginPage() {
             <p className="font-sans text-xs font-bold text-[#1A1A1A]/70 mt-1">
               Kelola data proyek & pengalaman kerja secara real-time.
             </p>
-          </div>
-
-          {/* Quick Notice Banner */}
-          <div className="bg-[#E0F2FE] border-2 border-[#1A1A1A] rounded-md p-3 mb-6 shadow-brutal-sm flex items-start gap-2">
-            <ShieldAlert className="w-4 h-4 text-[#1A1A1A] shrink-0 mt-0.5" />
-            <div className="font-mono text-[11px] font-bold text-[#1A1A1A]">
-              <p>Default Admin Credentials:</p>
-              <p className="mt-0.5">Username: <span className="underline">admin</span> | Password: <span className="underline">admin123</span></p>
-            </div>
           </div>
 
           {error && (

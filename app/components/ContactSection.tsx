@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Mail, Send, MessageSquare, CheckCircle, MapPin, Phone } from "lucide-react";
+import { Mail, Send, MessageSquare, CheckCircle, MapPin, Loader2 } from "lucide-react";
 import { Card } from "./ui/Card";
 import { Button } from "./ui/Button";
 import { Badge } from "./ui/Badge";
@@ -9,13 +9,37 @@ import { useI18n } from "@/lib/i18n";
 
 export const ContactSection: React.FC = () => {
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
   const [form, setForm] = useState({ name: "", email: "", message: "" });
   const { t } = useI18n();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (form.name && form.email && form.message) {
-      setSubmitted(true);
+    if (!form.name || !form.email || !form.message) return;
+
+    setLoading(true);
+    setErrorMsg("");
+
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setSubmitted(true);
+        setForm({ name: "", email: "", message: "" });
+      } else {
+        setErrorMsg(data.error || "Gagal mengirim email.");
+      }
+    } catch {
+      setErrorMsg("Terjadi kesalahan koneksi. Silakan coba lagi.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -87,6 +111,12 @@ export const ContactSection: React.FC = () => {
                     {t("contact.form_title")}
                   </h3>
 
+                  {errorMsg && (
+                    <div className="p-3 bg-[#F472B6] border-2 border-[#1A1A1A] rounded-md font-sans text-xs font-bold text-[#1A1A1A]">
+                      ⚠️ {errorMsg}
+                    </div>
+                  )}
+
                   <div className="flex flex-col gap-2">
                     <label className="font-mono text-xs font-bold text-[#1A1A1A] uppercase">
                       {t("contact.name_label")}
@@ -129,8 +159,16 @@ export const ContactSection: React.FC = () => {
                     />
                   </div>
 
-                  <Button variant="primary" size="lg" type="submit" className="w-full mt-2">
-                    {t("contact.submit")} <Send className="w-4 h-4" />
+                  <Button variant="primary" size="lg" type="submit" disabled={loading} className="w-full mt-2">
+                    {loading ? (
+                      <>
+                        MENGIRIM... <Loader2 className="w-4 h-4 animate-spin" />
+                      </>
+                    ) : (
+                      <>
+                        {t("contact.submit")} <Send className="w-4 h-4" />
+                      </>
+                    )}
                   </Button>
                 </form>
               )}
