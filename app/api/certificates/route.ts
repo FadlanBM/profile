@@ -55,9 +55,10 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({ success: true, id }, { status: 201 });
-  } catch (error) {
+  } catch (error: any) {
+    console.error("Certificate POST error:", error);
     return NextResponse.json(
-      { error: "Gagal menyimpan sertifikat." },
+      { error: error?.message || "Gagal menyimpan sertifikat." },
       { status: 500 }
     );
   }
@@ -97,9 +98,10 @@ export async function PUT(request: Request) {
     });
 
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch (error: any) {
+    console.error("Certificate PUT error:", error);
     return NextResponse.json(
-      { error: "Gagal memperbarui sertifikat." },
+      { error: error?.message || "Gagal memperbarui sertifikat." },
       { status: 500 }
     );
   }

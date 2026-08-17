@@ -413,7 +413,8 @@ export default function AdminDashboard() {
       setCertModalOpen(false);
       fetchData();
     } else {
-      alert("Gagal menyimpan sertifikat");
+      const data = await res.json().catch(() => null);
+      alert(data?.error || "Gagal menyimpan sertifikat");
     }
   };
 
