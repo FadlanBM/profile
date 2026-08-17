@@ -132,9 +132,26 @@ export async function DELETE(request: Request) {
     });
 
     // If the image was stored in Vercel Blob, delete it from blob storage too
-    if (cert?.image_url && cert.image_url.includes("vercel-storage.com") && process.env.BLOB_READ_WRITE_TOKEN) {
+    let rawBlobUrl = cert?.image_url;
+    if (rawBlobUrl?.includes("url=")) {
       try {
-        await del(cert.image_url);
+        const u = new URL(rawBlobUrl, "http://localhost");
+        rawBlobUrl = u.searchParams.get("url") || rawBlobUrl;
+      } catch {}
+    }
+
+    const hasBlobConfig =
+      Boolean(process.env.BLOB_READ_WRITE_TOKEN) || Boolean(process.env.BLOB_STORE_ID);
+
+    if (rawBlobUrl && rawBlobUrl.includes("vercel-storage.com") && hasBlobConfig) {
+      try {
+        const delOptions: any = {};
+        if (process.env.BLOB_STORE_ID) {
+          delOptions.storeId = process.env.BLOB_STORE_ID;
+        } else if (process.env.BLOB_READ_WRITE_TOKEN) {
+          delOptions.token = process.env.BLOB_READ_WRITE_TOKEN;
+        }
+        await del(rawBlobUrl, delOptions);
       } catch {
         // Silently ignore blob deletion failures — the certificate row is already gone
       }
