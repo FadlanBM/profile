@@ -6,10 +6,15 @@ import fs from "fs";
 const TURSO_URL = process.env.TURSO_DATABASE_URL;
 const TURSO_TOKEN = process.env.TURSO_AUTH_TOKEN;
 
-// Local SQLite file fallback — used during local development.
-const dataDir = path.join(process.cwd(), "data");
+// Local SQLite file fallback — used during local development or Vercel fallback.
+const dataDir = process.env.VERCEL
+  ? "/tmp/data"
+  : path.join(process.cwd(), "data");
+
 if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
+  try {
+    fs.mkdirSync(dataDir, { recursive: true });
+  } catch {}
 }
 const localDbPath = path.join(dataDir, "portfolio.db").replace(/\\/g, "/");
 
