@@ -31,29 +31,31 @@ export async function POST(request: Request) {
     const ext = file.name.split(".").pop() ?? (isPdf ? "pdf" : "jpg");
     const filename = `${isPdf ? "cv" : "certificates"}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
 
-    const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
+    const hasBlobConfig =
+      Boolean(process.env.BLOB_READ_WRITE_TOKEN) ||
+      Boolean(process.env.BLOB_STORE_ID) ||
+      Boolean(process.env.VERCEL);
 
-    // If BLOB_READ_WRITE_TOKEN is set (Vercel Production), use Vercel Blob SDK
-    if (blobToken) {
+    // If BLOB configuration or Vercel environment is detected, use Vercel Blob SDK
+    if (hasBlobConfig) {
       const arrayBuffer = await file.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
-      const blob = await put(filename, buffer, {
+
+      const putOptions: any = {
         access: "public",
         contentType: file.type,
-        token: blobToken,
-      });
-      return NextResponse.json({ url: blob.url });
-    }
+      };
 
-    // If running on Vercel environment without token
-    if (process.env.VERCEL) {
-      return NextResponse.json(
-        {
-          error:
-            "BLOB_READ_WRITE_TOKEN belum ditemukan di Vercel Environment Variables. Pastikan Vercel Blob sudah di-connect ke environment Production & Preview, lalu lakukan Redeploy.",
-        },
-        { status: 500 }
-      );
+      // OIDC auth takes precedence: when BLOB_STORE_ID is set, the SDK
+      // auto-uses Vercel's managed VERCEL_OIDC_TOKEN (no long-lived secret).
+      if (process.env.BLOB_STORE_ID) {
+        putOptions.storeId = process.env.BLOB_STORE_ID;
+      } else if (process.env.BLOB_READ_WRITE_TOKEN) {
+        putOptions.token = process.env.BLOB_READ_WRITE_TOKEN;
+      }
+
+      const blob = await put(filename, buffer, putOptions);
+      return NextResponse.json({ url: blob.url });
     }
 
     // Local fallback: save to public/uploads/[folder]/
