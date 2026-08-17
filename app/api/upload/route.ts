@@ -41,34 +41,24 @@ export async function POST(request: Request) {
       const arrayBuffer = await file.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
 
-      const accessMode = process.env.BLOB_ACCESS === "private" ? "private" : "public";
-
       const putOptions: any = {
-        access: accessMode,
+        access: "private",
         contentType: file.type,
       };
 
       // OIDC auth takes precedence: when BLOB_STORE_ID is set, the SDK
       // auto-uses Vercel's managed VERCEL_OIDC_TOKEN (no long-lived secret).
-      if (process.env.BLOB_READ_WRITE_TOKEN) {
-        putOptions.token = process.env.BLOB_READ_WRITE_TOKEN;
-      }
       if (process.env.BLOB_STORE_ID) {
         putOptions.storeId = process.env.BLOB_STORE_ID;
+      } else if (process.env.BLOB_READ_WRITE_TOKEN) {
+        putOptions.token = process.env.BLOB_READ_WRITE_TOKEN;
       }
 
-      let blob;
-      try {
-        blob = await put(filename, buffer, putOptions);
-      } catch (err: any) {
-        if (err?.message?.includes("private store")) {
-          blob = await put(filename, buffer, { ...putOptions, access: "private" });
-        } else {
-          throw err;
-        }
-      }
+      const blob = await put(filename, buffer, putOptions);
 
-      return NextResponse.json({ url: blob.url });
+      // Serve through /api/media proxy since the store is private
+      const proxyUrl = `/api/media?url=${encodeURIComponent(blob.url)}`;
+      return NextResponse.json({ url: proxyUrl });
     }
 
     // Local fallback: save to public/uploads/[folder]/
