@@ -378,7 +378,8 @@ export default function AdminDashboard() {
       const data = await res.json();
       setCertForm({ ...certForm, image_url: data.url });
     } else {
-      alert("Gagal mengupload gambar.");
+      const data = await res.json().catch(() => null);
+      alert(data?.error || "Gagal mengupload gambar.");
     }
   };
 
