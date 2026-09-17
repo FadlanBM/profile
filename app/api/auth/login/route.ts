@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { verifyAdminCredentials, createAdminToken } from "@/lib/auth";
+import { shouldUseSecureCookie } from "@/lib/cookie-security";
 
 export async function POST(request: Request) {
   try {
@@ -26,9 +27,11 @@ export async function POST(request: Request) {
       message: "Login admin berhasil!",
     });
 
+    const isSecure = shouldUseSecureCookie(request);
+
     response.cookies.set("admin_session", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: isSecure,
       sameSite: "lax",
       maxAge: 60 * 60 * 24 * 7, // 7 days
       path: "/",

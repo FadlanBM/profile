@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Lock, User, LogIn, ArrowLeft } from "lucide-react";
 import { Card } from "@/app/components/ui/Card";
@@ -45,9 +46,9 @@ export default function LoginPage() {
     <div className="min-h-screen bg-[#FEFBF6] bg-grid-pattern flex flex-col justify-between p-6">
       {/* Top Bar */}
       <div className="max-w-md mx-auto w-full pt-4">
-        <a href="/" className="inline-flex items-center gap-2 font-mono text-xs font-bold text-[#1A1A1A] hover:underline">
+        <Link href="/" className="inline-flex items-center gap-2 font-mono text-xs font-bold text-[#1A1A1A] hover:underline">
           <ArrowLeft className="w-4 h-4" /> KEMBALI KE PORTFOLIO
-        </a>
+        </Link>
       </div>
 
       {/* Main Login Card */}

@@ -111,6 +111,55 @@ export async function initDB() {
     );
   `);
 
+  // Keep databases created by older app versions compatible with current CRUD.
+  // SQLite/libSQL does not add new columns when CREATE TABLE IF NOT EXISTS runs.
+  const migrations = [
+    "ALTER TABLE projects ADD COLUMN title_en TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE projects ADD COLUMN description_en TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE experiences ADD COLUMN description_en TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE experiences ADD COLUMN period_en TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE certificates ADD COLUMN issued_date TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE certificates ADD COLUMN description TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE certificates ADD COLUMN credential_url TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE certificates ADD COLUMN title_en TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE certificates ADD COLUMN description_en TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE categories ADD COLUMN name_en TEXT NOT NULL DEFAULT ''",
+  ];
+  for (const sql of migrations) {
+    try {
+      await db.execute(sql);
+    } catch {
+      // The column already exists.
+    }
+  }
+
+  // Seed default Hero if empty
+  const heroCount = (await db.execute("SELECT COUNT(*) as count FROM hero")).rows[0] as unknown as { count: number };
+  if ((heroCount?.count ?? 0) === 0) {
+    await db.execute({
+      sql: `INSERT INTO hero (
+        id, greeting, title_line1, title_highlight, title_line2, description,
+        availability_badge, location, role, skills, profile_image,
+        greeting_en, description_en, cv_url
+      ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        "HELLO, SAYA FADLAN 👋",
+        "I BUILD BOLD",
+        "DIGITAL",
+        "THINGS.",
+        "Full-stack developer yang mengubah ide kompleks menjadi produk digital yang cepat, jelas, dan memorable.",
+        "OPEN TO WORK — JAKARTA, ID",
+        "// Yogyakarta, INDONESIA",
+        "Senior Full-Stack Engineer",
+        JSON.stringify(["React / Next.js", "TypeScript", "Node.js"]),
+        "/profile.JPG",
+        "HELLO, I'M FADLAN 👋",
+        "Full-stack developer turning complex ideas into fast, clear, and memorable digital products.",
+        "",
+      ],
+    });
+  }
+
   // Seed default Categories if empty
   const catCount = (await db.execute("SELECT COUNT(*) as count FROM categories")).rows[0] as unknown as { count: number };
   if ((catCount?.count ?? 0) === 0) {

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { 
   Plus, Trash2, Edit3, LogOut, ArrowLeft, FolderGit2, Briefcase, 
@@ -135,21 +136,6 @@ export default function AdminDashboard() {
   });
   const [heroLoaded, setHeroLoaded] = useState(false);
 
-  // Verify Auth on Mount
-  useEffect(() => {
-    fetch("/api/auth/check")
-      .then((res) => res.json())
-      .then((data) => {
-        if (!data.authenticated) {
-          router.push("/login");
-        } else {
-          setAuthenticated(true);
-          fetchData();
-        }
-      })
-      .catch(() => router.push("/login"));
-  }, [router]);
-
   const fetchData = async () => {
     const [projRes, expRes] = await Promise.all([
       fetch("/api/projects"),
@@ -191,6 +177,21 @@ export default function AdminDashboard() {
     }
     setHeroLoaded(true);
   };
+
+  // Verify Auth on Mount
+  useEffect(() => {
+    fetch("/api/auth/check")
+      .then((res) => res.json())
+      .then((data) => {
+        if (!data.authenticated) {
+          router.push("/login");
+        } else {
+          setAuthenticated(true);
+          fetchData();
+        }
+      })
+      .catch(() => router.push("/login"));
+  }, [router]);
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -539,9 +540,9 @@ export default function AdminDashboard() {
       <header className="sticky top-0 z-40 bg-[#1A1A1A] text-[#FEFBF6] border-b-4 border-[#1A1A1A]">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <a href="/" className="font-mono text-xs font-bold bg-[#FDE047] text-[#1A1A1A] px-3 py-1.5 rounded border-2 border-white shadow-brutal-sm hover:scale-105 transition-transform flex items-center gap-1">
+            <Link href="/" className="font-mono text-xs font-bold bg-[#FDE047] text-[#1A1A1A] px-3 py-1.5 rounded border-2 border-white shadow-brutal-sm hover:scale-105 transition-transform flex items-center gap-1">
               <ArrowLeft className="w-3.5 h-3.5" /> LIHAT PORTFOLIO
-            </a>
+            </Link>
             <h1 className="font-display text-2xl tracking-wide hidden sm:block">
               ADMIN DASHBOARD
             </h1>
