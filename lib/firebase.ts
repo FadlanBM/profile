@@ -45,11 +45,44 @@ function normalizePrivateKey(raw: string | undefined): string | undefined {
   return key.trim();
 }
 
+function cleanSingleLine(raw: string | undefined): string | undefined {
+  if (!raw) return undefined;
+  let val = raw.trim();
+  if (
+    (val.startsWith('"') && val.endsWith('"')) ||
+    (val.startsWith("'") && val.endsWith("'"))
+  ) {
+    val = val.slice(1, -1).trim();
+  }
+  const lines = val.split(/[\r\n\s,]+/).map((s) => s.trim()).filter(Boolean);
+  return lines[0];
+}
+
+function cleanProjectId(
+  raw: string | undefined,
+  clientEmail: string | undefined
+): string | undefined {
+  const cleaned = cleanSingleLine(raw);
+  if (cleaned) {
+    const match = cleaned.match(/[a-z0-9-]+/i);
+    if (match) return match[0];
+  }
+  if (clientEmail) {
+    const emailMatch = clientEmail.match(/@([a-z0-9-]+)\.iam\.gserviceaccount\.com/i);
+    if (emailMatch) return emailMatch[1];
+  }
+  return undefined;
+}
+
 function readConfig() {
+  const clientEmail = cleanSingleLine(process.env.FIREBASE_CLIENT_EMAIL);
+  const projectId = cleanProjectId(process.env.FIREBASE_PROJECT_ID, clientEmail);
+  const privateKey = normalizePrivateKey(process.env.FIREBASE_PRIVATE_KEY);
+
   return {
-    projectId: process.env.FIREBASE_PROJECT_ID?.trim(),
-    clientEmail: process.env.FIREBASE_CLIENT_EMAIL?.trim(),
-    privateKey: normalizePrivateKey(process.env.FIREBASE_PRIVATE_KEY),
+    projectId,
+    clientEmail,
+    privateKey,
   };
 }
 
