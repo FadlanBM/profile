@@ -1,14 +1,26 @@
 import { NextResponse } from "next/server";
-import db, { ensureDB } from "@/lib/db";
+import { getDb, COLLECTIONS, ensureDB } from "@/lib/db";
 import { isAdminAuthenticated } from "@/lib/auth";
-import { del } from "@vercel/blob";
+import { getFirebaseStorage } from "@/lib/firebase";
+import type { Certificate } from "@/lib/firestore";
 
 export async function GET() {
   try {
     await ensureDB();
-    const res = await db.execute("SELECT * FROM certificates ORDER BY createdAt DESC");
-    return NextResponse.json(res.rows);
+    const db = getDb();
+    const snapshot = await db
+      .collection(COLLECTIONS.CERTIFICATES)
+      .orderBy("createdAt", "desc")
+      .get();
+
+    const certificates: Certificate[] = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...(doc.data() as Omit<Certificate, "id">),
+    }));
+
+    return NextResponse.json(certificates);
   } catch (error) {
+    console.error("Error fetching certificates:", error);
     return NextResponse.json(
       { error: "Gagal mengambil data sertifikat." },
       { status: 500 }
@@ -23,6 +35,7 @@ export async function POST(request: Request) {
     }
 
     await ensureDB();
+    const db = getDb();
     const body = await request.json();
     const { title, issuer, issued_date, description, image_url, credential_url, title_en, description_en } = body;
 
@@ -34,33 +47,26 @@ export async function POST(request: Request) {
     }
 
     const id = Date.now().toString();
+    const certificate: Certificate = {
+      id,
+      title,
+      issuer,
+      issued_date: issued_date || "",
+      description: description || "",
+      image_url,
+      credential_url: credential_url || "",
+      title_en: title_en || "",
+      description_en: description_en || "",
+      createdAt: Date.now(),
+    };
 
-    await db.execute({
-      sql: `
-        INSERT INTO certificates (id, title, issuer, issued_date, description, image_url, credential_url, title_en, description_en, createdAt)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `,
-      args: [
-        id,
-        title,
-        issuer,
-        issued_date || "",
-        description || "",
-        image_url,
-        credential_url || "",
-        title_en || "",
-        description_en || "",
-        Date.now(),
-      ],
-    });
+    await db.collection(COLLECTIONS.CERTIFICATES).doc(id).set(certificate);
 
     return NextResponse.json({ success: true, id }, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Certificate POST error:", error);
-    return NextResponse.json(
-      { error: error?.message || "Gagal menyimpan sertifikat." },
-      { status: 500 }
-    );
+    const message = error instanceof Error ? error.message : "Gagal menyimpan sertifikat.";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -71,6 +77,7 @@ export async function PUT(request: Request) {
     }
 
     await ensureDB();
+    const db = getDb();
     const body = await request.json();
     const { id, title, issuer, issued_date, description, image_url, credential_url, title_en, description_en } = body;
 
@@ -78,32 +85,24 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: "ID sertifikat wajib diisi." }, { status: 400 });
     }
 
-    await db.execute({
-      sql: `
-        UPDATE certificates
-        SET title = ?, issuer = ?, issued_date = ?, description = ?, image_url = ?, credential_url = ?, title_en = ?, description_en = ?
-        WHERE id = ?
-      `,
-      args: [
-        title,
-        issuer,
-        issued_date || "",
-        description || "",
-        image_url,
-        credential_url || "",
-        title_en || "",
-        description_en || "",
-        id,
-      ],
-    });
+    const updateData: Partial<Certificate> = {
+      title,
+      issuer,
+      issued_date: issued_date || "",
+      description: description || "",
+      image_url,
+      credential_url: credential_url || "",
+      title_en: title_en || "",
+      description_en: description_en || "",
+    };
+
+    await db.collection(COLLECTIONS.CERTIFICATES).doc(id).update(updateData);
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Certificate PUT error:", error);
-    return NextResponse.json(
-      { error: error?.message || "Gagal memperbarui sertifikat." },
-      { status: 500 }
-    );
+    const message = error instanceof Error ? error.message : "Gagal memperbarui sertifikat.";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -114,6 +113,7 @@ export async function DELETE(request: Request) {
     }
 
     await ensureDB();
+    const db = getDb();
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
 
@@ -121,49 +121,34 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "ID sertifikat wajib diisi." }, { status: 400 });
     }
 
-    // Fetch certificate first to get image_url for blob cleanup
-    const certRes = await db.execute({
-      sql: "SELECT image_url FROM certificates WHERE id = ?",
-      args: [id],
-    });
-    const cert = certRes.rows[0] as { image_url?: string } | undefined;
+    // Fetch certificate to get image_url for cleanup
+    const certDoc = await db.collection(COLLECTIONS.CERTIFICATES).doc(id).get();
+    const certData = certDoc.data() as Certificate | undefined;
 
-    await db.execute({
-      sql: "DELETE FROM certificates WHERE id = ?",
-      args: [id],
-    });
+    // Delete from Firestore
+    await db.collection(COLLECTIONS.CERTIFICATES).doc(id).delete();
 
-    // If the image was stored in Vercel Blob, delete it from blob storage too
-    let rawBlobUrl = cert?.image_url;
-    if (rawBlobUrl?.includes("url=")) {
+    // Delete from Firebase Storage if applicable
+    if (certData?.image_url?.includes("firebasestorage.app") || certData?.image_url?.includes("storage.googleapis.com")) {
       try {
-        const u = new URL(rawBlobUrl, "http://localhost");
-        rawBlobUrl = u.searchParams.get("url") || rawBlobUrl;
-      } catch {}
-    }
-
-    const hasBlobConfig =
-      Boolean(process.env.BLOB_READ_WRITE_TOKEN) || Boolean(process.env.BLOB_STORE_ID);
-
-    if (rawBlobUrl && rawBlobUrl.includes("vercel-storage.com") && hasBlobConfig) {
-      try {
-        const delOptions: any = {};
-        if (process.env.BLOB_STORE_ID) {
-          delOptions.storeId = process.env.BLOB_STORE_ID;
-        } else if (process.env.BLOB_READ_WRITE_TOKEN) {
-          delOptions.token = process.env.BLOB_READ_WRITE_TOKEN;
+        const storage = getFirebaseStorage();
+        const bucket = storage.bucket();
+        
+        // Extract path from URL
+        const url = new URL(certData.image_url);
+        const pathMatch = url.pathname.match(/\/o\/(.+)\?/);
+        if (pathMatch && pathMatch[1]) {
+          const filePath = decodeURIComponent(pathMatch[1]);
+          await bucket.file(filePath).delete().catch(() => {});
         }
-        await del(rawBlobUrl, delOptions);
       } catch {
-        // Silently ignore blob deletion failures — the certificate row is already gone
+        // Silently ignore storage deletion failures
       }
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    return NextResponse.json(
-      { error: "Gagal menghapus sertifikat." },
-      { status: 500 }
-    );
+    console.error("Error deleting certificate:", error);
+    return NextResponse.json({ error: "Gagal menghapus sertifikat." }, { status: 500 });
   }
 }

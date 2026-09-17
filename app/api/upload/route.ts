@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 import { isAdminAuthenticated } from "@/lib/auth";
-import { put } from "@vercel/blob";
-import fs from "fs";
-import path from "path";
+import { getFirebaseStorage } from "@/lib/firebase";
 
 export async function POST(request: Request) {
   try {
@@ -28,56 +26,35 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Hanya file gambar atau PDF yang diizinkan." }, { status: 400 });
     }
 
+    // Generate unique filename
     const ext = file.name.split(".").pop() ?? (isPdf ? "pdf" : "jpg");
-    const filename = `${isPdf ? "cv" : "certificates"}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const folder = isPdf ? "cv" : "certificates";
+    const filename = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
 
-    const hasBlobConfig =
-      Boolean(process.env.BLOB_READ_WRITE_TOKEN) ||
-      Boolean(process.env.BLOB_STORE_ID);
+    // Upload to Firebase Storage
+    const storage = getFirebaseStorage();
+    const bucket = storage.bucket();
 
-    // If BLOB configuration is present, use Vercel Blob SDK
-    if (hasBlobConfig) {
-      const arrayBuffer = await file.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const fileRef = bucket.file(filename);
 
-      const putOptions: any = {
-        access: "private",
+    await fileRef.save(buffer, {
+      metadata: {
         contentType: file.type,
-      };
+        cacheControl: "public, max-age=31536000",
+      },
+    });
 
-      // OIDC auth takes precedence: when BLOB_STORE_ID is set, the SDK
-      // auto-uses Vercel's managed VERCEL_OIDC_TOKEN (no long-lived secret).
-      if (process.env.BLOB_STORE_ID) {
-        putOptions.storeId = process.env.BLOB_STORE_ID;
-      } else if (process.env.BLOB_READ_WRITE_TOKEN) {
-        putOptions.token = process.env.BLOB_READ_WRITE_TOKEN;
-      }
+    // Make file publicly accessible
+    await fileRef.makePublic();
 
-      const blob = await put(filename, buffer, putOptions);
+    // Get public URL
+    const publicUrl = `https://storage.googleapis.com/${bucket.name}/${filename}`;
 
-      // Serve through /api/media proxy since the store is private
-      const proxyUrl = `/api/media?url=${encodeURIComponent(blob.url)}`;
-      return NextResponse.json({ url: proxyUrl });
-    }
-
-    // Local fallback: save to public/uploads/[folder]/
-    const subfolder = isPdf ? "cv" : "certificates";
-    const dir = path.join(process.cwd(), "public", "uploads", subfolder);
-    fs.mkdirSync(dir, { recursive: true });
-
-    const localFilename = path.basename(filename);
-    const buf = Buffer.from(await file.arrayBuffer());
-    fs.writeFileSync(path.join(dir, localFilename), buf);
-
-    // Return a URL that works in both dev and production via /api/media proxy
-    const directPath = `/uploads/${subfolder}/${localFilename}`;
-    const proxyUrl = `/api/media?url=${encodeURIComponent(directPath)}`;
-    return NextResponse.json({ url: proxyUrl });
-  } catch (error: any) {
+    return NextResponse.json({ url: publicUrl });
+  } catch (error: unknown) {
     console.error("Upload error detail:", error);
-    return NextResponse.json(
-      { error: error?.message || "Gagal mengupload file." },
-      { status: 500 }
-    );
+    const message = error instanceof Error ? error.message : "Gagal mengupload file.";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

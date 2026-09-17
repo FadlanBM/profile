@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import db, { ensureDB } from "@/lib/db";
+import { getDb, COLLECTIONS, ensureDB } from "@/lib/db";
 import { isAdminAuthenticated } from "@/lib/auth";
+import type { Hero } from "@/lib/firestore";
 
 export interface HeroData {
   greeting: string;
@@ -21,20 +22,17 @@ export interface HeroData {
 export async function GET() {
   try {
     await ensureDB();
-    const res = await db.execute("SELECT * FROM hero WHERE id = 1");
-    const hero = res.rows[0] as any;
+    const db = getDb();
+    const doc = await db.collection(COLLECTIONS.HERO).doc("main").get();
 
-    if (!hero) {
+    if (!doc.exists) {
       return NextResponse.json({ error: "Hero data not found" }, { status: 404 });
     }
 
-    const data: HeroData = {
-      ...hero,
-      skills: JSON.parse((hero.skills as string) || "[]"),
-    };
-
+    const data = doc.data() as Hero;
     return NextResponse.json(data);
   } catch (error) {
+    console.error("Error fetching hero:", error);
     return NextResponse.json(
       { error: "Gagal mengambil data hero." },
       { status: 500 }
@@ -49,6 +47,7 @@ export async function PUT(request: Request) {
     }
 
     await ensureDB();
+    const db = getDb();
     const body = await request.json();
     const {
       greeting,
@@ -73,46 +72,27 @@ export async function PUT(request: Request) {
       );
     }
 
-    const skillsJson = JSON.stringify(skills);
+    const heroData: Partial<Hero> = {
+      greeting,
+      title_line1,
+      title_highlight,
+      title_line2,
+      description: description || "",
+      availability_badge: availability_badge || "",
+      location: location || "",
+      role: role || "",
+      skills: Array.isArray(skills) ? skills : [],
+      profile_image: profile_image || "/profile.JPG",
+      greeting_en: greeting_en || "",
+      description_en: description_en || "",
+      cv_url: cv_url || "",
+    };
 
-    await db.execute({
-      sql: `
-        INSERT INTO hero (id, greeting, title_line1, title_highlight, title_line2, description, availability_badge, location, role, skills, profile_image, greeting_en, description_en, cv_url)
-        VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(id) DO UPDATE SET
-          greeting = excluded.greeting,
-          title_line1 = excluded.title_line1,
-          title_highlight = excluded.title_highlight,
-          title_line2 = excluded.title_line2,
-          description = excluded.description,
-          availability_badge = excluded.availability_badge,
-          location = excluded.location,
-          role = excluded.role,
-          skills = excluded.skills,
-          profile_image = excluded.profile_image,
-          greeting_en = excluded.greeting_en,
-          description_en = excluded.description_en,
-          cv_url = excluded.cv_url
-      `,
-      args: [
-        greeting,
-        title_line1,
-        title_highlight,
-        title_line2,
-        description || "",
-        availability_badge || "",
-        location || "",
-        role || "",
-        skillsJson,
-        profile_image || "/profile.JPG",
-        greeting_en || "",
-        description_en || "",
-        cv_url || "",
-      ],
-    });
+    await db.collection(COLLECTIONS.HERO).doc("main").set(heroData, { merge: true });
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    console.error("Error saving hero:", error);
     return NextResponse.json(
       { error: "Gagal menyimpan data hero." },
       { status: 500 }

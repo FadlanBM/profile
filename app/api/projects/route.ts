@@ -1,21 +1,25 @@
 import { NextResponse } from "next/server";
-import db, { ensureDB } from "@/lib/db";
+import { getDb, COLLECTIONS, ensureDB } from "@/lib/db";
 import { isAdminAuthenticated } from "@/lib/auth";
+import type { Project } from "@/lib/firestore";
 
 export async function GET() {
   try {
     await ensureDB();
-    const res = await db.execute("SELECT * FROM projects ORDER BY createdAt DESC");
-    const projects = res.rows as any[];
+    const db = getDb();
+    const snapshot = await db
+      .collection(COLLECTIONS.PROJECTS)
+      .orderBy("createdAt", "desc")
+      .get();
 
-    const formattedProjects = projects.map((p) => ({
-      ...p,
-      featured: Boolean(p.featured),
-      tags: JSON.parse((p.tags as string) || "[]"),
+    const projects: Project[] = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...(doc.data() as Omit<Project, "id">),
     }));
 
-    return NextResponse.json(formattedProjects);
+    return NextResponse.json(projects);
   } catch (error) {
+    console.error("Error fetching projects:", error);
     return NextResponse.json(
       { error: "Gagal mengambil data proyek dari database." },
       { status: 500 }
@@ -26,112 +30,150 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     if (!(await isAdminAuthenticated())) {
-      return NextResponse.json({ error: "Akses ditolak. Silakan login sebagai admin." }, { status: 401 });
+      return NextResponse.json(
+        { error: "Akses ditolak. Silakan login sebagai admin." },
+        { status: 401 }
+      );
     }
 
     await ensureDB();
+    const db = getDb();
     const body = await request.json();
-    const { title, category, description, tags, color, demoUrl, githubUrl, featured, title_en, description_en } = body;
+    const {
+      title,
+      category,
+      description,
+      tags,
+      color,
+      demoUrl,
+      githubUrl,
+      featured,
+      title_en,
+      description_en,
+    } = body;
 
     if (!title || !category || !description) {
-      return NextResponse.json({ error: "Title, Category, dan Description wajib diisi." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Title, Category, dan Description wajib diisi." },
+        { status: 400 }
+      );
     }
 
     const id = Date.now().toString();
-    const createdAt = Date.now();
-    const tagsJson = JSON.stringify(Array.isArray(tags) ? tags : []);
+    const project: Project = {
+      id,
+      title,
+      category,
+      description,
+      tags: Array.isArray(tags) ? tags : [],
+      color: color || "bg-[#FEFBF6]",
+      demoUrl: demoUrl || "",
+      githubUrl: githubUrl || "",
+      featured: Boolean(featured),
+      title_en: title_en || "",
+      description_en: description_en || "",
+      createdAt: Date.now(),
+    };
 
-    await db.execute({
-      sql: `
-        INSERT INTO projects (id, title, category, description, tags, color, demoUrl, githubUrl, featured, createdAt, title_en, description_en)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `,
-      args: [
-        id,
-        title,
-        category,
-        description,
-        tagsJson,
-        color || "bg-[#FEFBF6]",
-        demoUrl || "",
-        githubUrl || "",
-        featured ? 1 : 0,
-        createdAt,
-        title_en || "",
-        description_en || "",
-      ],
-    });
+    await db.collection(COLLECTIONS.PROJECTS).doc(id).set(project);
 
     return NextResponse.json({ success: true, id }, { status: 201 });
   } catch (error) {
-    return NextResponse.json({ error: "Gagal menyimpan proyek ke database." }, { status: 500 });
+    console.error("Error creating project:", error);
+    return NextResponse.json(
+      { error: "Gagal menyimpan proyek ke database." },
+      { status: 500 }
+    );
   }
 }
 
 export async function PUT(request: Request) {
   try {
     if (!(await isAdminAuthenticated())) {
-      return NextResponse.json({ error: "Akses ditolak. Silakan login sebagai admin." }, { status: 401 });
+      return NextResponse.json(
+        { error: "Akses ditolak. Silakan login sebagai admin." },
+        { status: 401 }
+      );
     }
 
     await ensureDB();
+    const db = getDb();
     const body = await request.json();
-    const { id, title, category, description, tags, color, demoUrl, githubUrl, featured, title_en, description_en } = body;
+    const {
+      id,
+      title,
+      category,
+      description,
+      tags,
+      color,
+      demoUrl,
+      githubUrl,
+      featured,
+      title_en,
+      description_en,
+    } = body;
 
     if (!id || !title || !category) {
-      return NextResponse.json({ error: "ID, Title, dan Category wajib diisi." }, { status: 400 });
+      return NextResponse.json(
+        { error: "ID, Title, dan Category wajib diisi." },
+        { status: 400 }
+      );
     }
 
-    const tagsJson = JSON.stringify(Array.isArray(tags) ? tags : []);
+    const updateData: Partial<Project> = {
+      title,
+      category,
+      description,
+      tags: Array.isArray(tags) ? tags : [],
+      color,
+      demoUrl,
+      githubUrl,
+      featured: Boolean(featured),
+      title_en: title_en || "",
+      description_en: description_en || "",
+    };
 
-    await db.execute({
-      sql: `
-        UPDATE projects
-        SET title = ?, category = ?, description = ?, tags = ?, color = ?, demoUrl = ?, githubUrl = ?, featured = ?, title_en = ?, description_en = ?
-        WHERE id = ?
-      `,
-      args: [
-        title,
-        category,
-        description,
-        tagsJson,
-        color,
-        demoUrl,
-        githubUrl,
-        featured ? 1 : 0,
-        title_en || "",
-        description_en || "",
-        id,
-      ],
-    });
+    await db.collection(COLLECTIONS.PROJECTS).doc(id).update(updateData);
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    return NextResponse.json({ error: "Gagal memperbarui proyek di database." }, { status: 500 });
+    console.error("Error updating project:", error);
+    return NextResponse.json(
+      { error: "Gagal memperbarui proyek di database." },
+      { status: 500 }
+    );
   }
 }
 
 export async function DELETE(request: Request) {
   try {
     if (!(await isAdminAuthenticated())) {
-      return NextResponse.json({ error: "Akses ditolak. Silakan login sebagai admin." }, { status: 401 });
+      return NextResponse.json(
+        { error: "Akses ditolak. Silakan login sebagai admin." },
+        { status: 401 }
+      );
     }
 
     await ensureDB();
+    const db = getDb();
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
 
     if (!id) {
-      return NextResponse.json({ error: "ID proyek wajib diisi." }, { status: 400 });
+      return NextResponse.json(
+        { error: "ID proyek wajib diisi." },
+        { status: 400 }
+      );
     }
 
-    await db.execute({
-      sql: "DELETE FROM projects WHERE id = ?",
-      args: [id],
-    });
+    await db.collection(COLLECTIONS.PROJECTS).doc(id).delete();
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    return NextResponse.json({ error: "Gagal menghapus proyek dari database." }, { status: 500 });
+    console.error("Error deleting project:", error);
+    return NextResponse.json(
+      { error: "Gagal menghapus proyek dari database." },
+      { status: 500 }
+    );
   }
 }
