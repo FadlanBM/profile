@@ -33,10 +33,9 @@ export async function POST(request: Request) {
 
     const hasBlobConfig =
       Boolean(process.env.BLOB_READ_WRITE_TOKEN) ||
-      Boolean(process.env.BLOB_STORE_ID) ||
-      Boolean(process.env.VERCEL);
+      Boolean(process.env.BLOB_STORE_ID);
 
-    // If BLOB configuration or Vercel environment is detected, use Vercel Blob SDK
+    // If BLOB configuration is present, use Vercel Blob SDK
     if (hasBlobConfig) {
       const arrayBuffer = await file.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
@@ -70,7 +69,10 @@ export async function POST(request: Request) {
     const buf = Buffer.from(await file.arrayBuffer());
     fs.writeFileSync(path.join(dir, localFilename), buf);
 
-    return NextResponse.json({ url: `/uploads/${subfolder}/${localFilename}` });
+    // Return a URL that works in both dev and production via /api/media proxy
+    const directPath = `/uploads/${subfolder}/${localFilename}`;
+    const proxyUrl = `/api/media?url=${encodeURIComponent(directPath)}`;
+    return NextResponse.json({ url: proxyUrl });
   } catch (error: any) {
     console.error("Upload error detail:", error);
     return NextResponse.json(
