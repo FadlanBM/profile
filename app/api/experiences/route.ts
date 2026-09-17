@@ -18,12 +18,10 @@ export async function GET() {
     }));
 
     return NextResponse.json(experiences);
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Error fetching experiences:", error);
-    return NextResponse.json(
-      { error: "Gagal mengambil data pengalaman kerja dari database." },
-      { status: 500 }
-    );
+    const message = error instanceof Error ? error.message : "Gagal mengambil data pengalaman kerja dari database.";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -65,12 +63,10 @@ export async function POST(request: Request) {
     await db.collection(COLLECTIONS.EXPERIENCES).doc(id).set(experience);
 
     return NextResponse.json({ success: true, id }, { status: 201 });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Error creating experience:", error);
-    return NextResponse.json(
-      { error: "Gagal menyimpan pengalaman ke database." },
-      { status: 500 }
-    );
+    const message = error instanceof Error ? error.message : "Gagal menyimpan pengalaman ke database.";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -109,12 +105,10 @@ export async function PUT(request: Request) {
     await db.collection(COLLECTIONS.EXPERIENCES).doc(id).update(updateData);
 
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Error updating experience:", error);
-    return NextResponse.json(
-      { error: "Gagal memperbarui pengalaman di database." },
-      { status: 500 }
-    );
+    const message = error instanceof Error ? error.message : "Gagal memperbarui pengalaman di database.";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -142,11 +136,9 @@ export async function DELETE(request: Request) {
     await db.collection(COLLECTIONS.EXPERIENCES).doc(id).delete();
 
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Error deleting experience:", error);
-    return NextResponse.json(
-      { error: "Gagal menghapus pengalaman dari database." },
-      { status: 500 }
-    );
+    const message = error instanceof Error ? error.message : "Gagal menghapus pengalaman dari database.";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

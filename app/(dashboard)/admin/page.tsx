@@ -327,14 +327,20 @@ export default function AdminDashboard() {
       setExpModalOpen(false);
       fetchData();
     } else {
-      alert("Gagal menyimpan pengalaman");
+      const data = await res.json().catch(() => null);
+      alert(data?.error || "Gagal menyimpan pengalaman");
     }
   };
 
   const handleDeleteExp = async (id: string) => {
     if (!confirm("Yakin ingin menghapus pengalaman kerja ini?")) return;
     const res = await fetch(`/api/experiences?id=${id}`, { method: "DELETE" });
-    if (res.ok) fetchData();
+    if (res.ok) {
+      fetchData();
+    } else {
+      const data = await res.json().catch(() => null);
+      alert(data?.error || "Gagal menghapus pengalaman kerja");
+    }
   };
 
   // --- CERTIFICATE CRUD ---

@@ -306,26 +306,37 @@ let initPromise: Promise<void> | null = null;
 
 /**
  * Initialize Firestore with seed data if collections are empty.
- * Should be called at least once during app startup.
+ * If seeding fails (e.g. permission or cold start), it does not permanently
+ * poison the promise so future calls can retry.
  */
 export async function initDB(): Promise<void> {
-  await Promise.all([
-    seedHero(),
-    seedCategories(),
-    seedProjects(),
-    seedExperiences(),
-    seedCertificates(),
-  ]);
+  try {
+    await Promise.all([
+      seedHero(),
+      seedCategories(),
+      seedProjects(),
+      seedExperiences(),
+      seedCertificates(),
+    ]);
+  } catch (err) {
+    // Reset so the next request tries again instead of caching the rejection.
+    initPromise = null;
+    throw err;
+  }
 }
 
 /**
- * Ensure database is initialized (singleton pattern).
+ * Ensure database is initialized. If seeding fails, we log a warning but
+ * do not block incoming CRUD — user-created documents can still be written.
  */
-export function ensureDB(): Promise<void> {
+export async function ensureDB(): Promise<void> {
   if (!initPromise) {
-    initPromise = initDB();
+    initPromise = initDB().catch((err) => {
+      initPromise = null;
+      console.warn("Auto-seeding skipped or failed:", err?.message || err);
+    });
   }
-  return initPromise;
+  await initPromise;
 }
 
 // Re-export types
