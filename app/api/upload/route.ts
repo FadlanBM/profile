@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { isAdminAuthenticated } from "@/lib/auth";
-import { getFirebaseStorage } from "@/lib/firebase";
+import { put, del } from "@vercel/blob";
 
 export async function POST(request: Request) {
   try {
@@ -26,35 +26,82 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Hanya file gambar atau PDF yang diizinkan." }, { status: 400 });
     }
 
-    // Generate unique filename
     const ext = file.name.split(".").pop() ?? (isPdf ? "pdf" : "jpg");
-    const folder = isPdf ? "cv" : "certificates";
-    const filename = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const filename = `${isPdf ? "cv" : "certificates"}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
 
-    // Upload to Firebase Storage
-    const storage = getFirebaseStorage();
-    const bucket = storage.bucket();
+    const hasBlobConfig =
+      Boolean(process.env.BLOB_READ_WRITE_TOKEN) ||
+      Boolean(process.env.BLOB_STORE_ID);
 
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const fileRef = bucket.file(filename);
+    if (!hasBlobConfig) {
+      return NextResponse.json(
+        { error: "Vercel Blob tidak dikonfigurasi. Set BLOB_READ_WRITE_TOKEN atau BLOB_STORE_ID." },
+        { status: 500 }
+      );
+    }
 
-    await fileRef.save(buffer, {
-      metadata: {
-        contentType: file.type,
-        cacheControl: "public, max-age=31536000",
-      },
-    });
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
 
-    // Make file publicly accessible
-    await fileRef.makePublic();
+    const putOptions: {
+      access: "public";
+      contentType: string;
+      token?: string;
+      storeId?: string;
+    } = {
+      access: "public",
+      contentType: file.type,
+    };
 
-    // Get public URL
-    const publicUrl = `https://storage.googleapis.com/${bucket.name}/${filename}`;
+    if (process.env.BLOB_STORE_ID) {
+      putOptions.storeId = process.env.BLOB_STORE_ID;
+    } else if (process.env.BLOB_READ_WRITE_TOKEN) {
+      putOptions.token = process.env.BLOB_READ_WRITE_TOKEN;
+    }
 
-    return NextResponse.json({ url: publicUrl });
+    const blob = await put(filename, buffer, putOptions);
+
+    return NextResponse.json({ url: blob.url });
   } catch (error: unknown) {
     console.error("Upload error detail:", error);
     const message = error instanceof Error ? error.message : "Gagal mengupload file.";
     return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    if (!(await isAdminAuthenticated())) {
+      return NextResponse.json({ error: "Akses ditolak." }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const url = searchParams.get("url");
+
+    if (!url) {
+      return NextResponse.json({ error: "URL wajib diisi." }, { status: 400 });
+    }
+
+    const hasBlobConfig =
+      Boolean(process.env.BLOB_READ_WRITE_TOKEN) ||
+      Boolean(process.env.BLOB_STORE_ID);
+
+    if (!hasBlobConfig || !url.includes("blob.vercel-storage.com")) {
+      return NextResponse.json({ success: true });
+    }
+
+    const delOptions: { token?: string; storeId?: string } = {};
+    if (process.env.BLOB_STORE_ID) {
+      delOptions.storeId = process.env.BLOB_STORE_ID;
+    } else if (process.env.BLOB_READ_WRITE_TOKEN) {
+      delOptions.token = process.env.BLOB_READ_WRITE_TOKEN;
+    }
+
+    await del(url, delOptions);
+
+    return NextResponse.json({ success: true });
+  } catch (error: unknown) {
+    console.error("Delete error:", error);
+    return NextResponse.json({ success: true }); // Silent fail for cleanup
   }
 }

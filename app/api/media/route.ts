@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { getFirebaseStorage } from "@/lib/firebase";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -9,10 +8,10 @@ export async function GET(request: Request) {
     return new NextResponse("Missing url parameter", { status: 400 });
   }
 
-  // Handle Firebase Storage URLs
-  if (targetUrl.includes("storage.googleapis.com") || targetUrl.includes("firebasestorage.app")) {
+  // Handle Vercel Blob URLs - redirect to public URL
+  if (targetUrl.includes("blob.vercel-storage.com")) {
     try {
-      // For public URLs, just redirect
+      // For public blobs, just redirect directly
       return NextResponse.redirect(targetUrl);
     } catch (error: unknown) {
       console.error("Media proxy error:", error);

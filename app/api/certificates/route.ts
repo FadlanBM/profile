@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb, COLLECTIONS, ensureDB } from "@/lib/db";
 import { isAdminAuthenticated } from "@/lib/auth";
-import { getFirebaseStorage } from "@/lib/firebase";
+import { del } from "@vercel/blob";
 import type { Certificate } from "@/lib/firestore";
 
 export async function GET() {
@@ -128,21 +128,24 @@ export async function DELETE(request: Request) {
     // Delete from Firestore
     await db.collection(COLLECTIONS.CERTIFICATES).doc(id).delete();
 
-    // Delete from Firebase Storage if applicable
-    if (certData?.image_url?.includes("firebasestorage.app") || certData?.image_url?.includes("storage.googleapis.com")) {
-      try {
-        const storage = getFirebaseStorage();
-        const bucket = storage.bucket();
-        
-        // Extract path from URL
-        const url = new URL(certData.image_url);
-        const pathMatch = url.pathname.match(/\/o\/(.+)\?/);
-        if (pathMatch && pathMatch[1]) {
-          const filePath = decodeURIComponent(pathMatch[1]);
-          await bucket.file(filePath).delete().catch(() => {});
+    // Delete from Vercel Blob if applicable
+    if (certData?.image_url?.includes("blob.vercel-storage.com")) {
+      const hasBlobConfig =
+        Boolean(process.env.BLOB_READ_WRITE_TOKEN) ||
+        Boolean(process.env.BLOB_STORE_ID);
+
+      if (hasBlobConfig) {
+        try {
+          const delOptions: { token?: string; storeId?: string } = {};
+          if (process.env.BLOB_STORE_ID) {
+            delOptions.storeId = process.env.BLOB_STORE_ID;
+          } else if (process.env.BLOB_READ_WRITE_TOKEN) {
+            delOptions.token = process.env.BLOB_READ_WRITE_TOKEN;
+          }
+          await del(certData.image_url, delOptions);
+        } catch {
+          // Silently ignore blob deletion failures
         }
-      } catch {
-        // Silently ignore storage deletion failures
       }
     }
 
