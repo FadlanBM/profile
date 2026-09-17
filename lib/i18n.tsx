@@ -1,12 +1,15 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, { createContext, useContext, useCallback, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import { isLanguage, DEFAULT_LANGUAGE, type Language } from "./languages";
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-export type Language = "id" | "en";
+export type { Language };
+export { LANGUAGES, DEFAULT_LANGUAGE, isLanguage } from "./languages";
 
 interface LanguageContextValue {
   lang: Language;
@@ -39,6 +42,7 @@ const translations: Record<string, Record<Language, string>> = {
   "projects.featured": { id: "FEATURED", en: "FEATURED" },
   "projects.empty": { id: "BELUM ADA PROYEK", en: "NO PROJECTS YET" },
   "projects.empty_filtered": { id: "Tidak ada proyek pada kategori ini.", en: "No projects in this category." },
+  "projects.all": { id: "SEMUA", en: "ALL" },
 
   // Experience
   "experience.header_badge": { id: "REKAM JEJAK", en: "TRACK RECORD" },
@@ -63,6 +67,7 @@ const translations: Record<string, Record<Language, string>> = {
   "contact.message_label": { id: "PESAN / RENCANA PROYEK *", en: "MESSAGE / PROJECT PLAN *" },
   "contact.message_placeholder": { id: "Ceritakan detail proyek atau pesan Anda...", en: "Tell me about your project or message..." },
   "contact.submit": { id: "KIRIM PESAN SEKARANG", en: "SEND MESSAGE NOW" },
+  "contact.sending": { id: "MENGIRIM...", en: "SENDING..." },
   "contact.thanks_title": { id: "TERIMA KASIH!", en: "THANK YOU!" },
   "contact.thanks_desc": { id: "Pesan Anda telah berhasil dikirim. Saya akan menghubungi Anda dalam waktu 24 jam.", en: "Your message has been sent successfully. I'll get back to you within 24 hours." },
   "contact.send_another": { id: "KIRIM PESAN LAIN", en: "SEND ANOTHER MESSAGE" },
@@ -97,7 +102,7 @@ const translations: Record<string, Record<Language, string>> = {
 // ---------------------------------------------------------------------------
 
 const LanguageContext = createContext<LanguageContextValue>({
-  lang: "id",
+  lang: DEFAULT_LANGUAGE,
   setLang: () => { },
   t: (key) => key,
 });
@@ -106,29 +111,24 @@ const LanguageContext = createContext<LanguageContextValue>({
 // Provider
 // ---------------------------------------------------------------------------
 
-export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [lang, setLangState] = useState<Language>("id");
-
-  // Hydrate from localStorage on mount
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem("lang") as Language | null;
-      if (stored === "id" || stored === "en") {
-        setLangState(stored);
-      }
-    } catch {
-      // localStorage unavailable
-    }
-  }, []);
-
+export function LanguageProvider({
+  lang,
+  children,
+}: {
+  lang: Language;
+  children: React.ReactNode;
+}) {
+  const router = useRouter();
+  // The language is sourced from the URL so every locale has its own crawlable
+  // address (SEO). `setLang` navigates rather than mutating local state.
   const setLang = useCallback((next: Language) => {
-    setLangState(next);
-    try {
-      localStorage.setItem("lang", next);
-    } catch {
-      // ignore
-    }
-  }, []);
+    if (typeof window === "undefined" || next === lang) return;
+    const { pathname, search, hash } = window.location;
+    const segments = pathname.split("/").filter(Boolean);
+    const rest = isLanguage(segments[0]) ? segments.slice(1) : segments;
+    const target = `/${next}${rest.length ? `/${rest.join("/")}` : ""}${search}${hash}`;
+    router.push(target);
+  }, [lang, router]);
 
   const t = useCallback(
     (key: string, fallback?: string): string => {
@@ -139,8 +139,10 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     [lang]
   );
 
+  const value = useMemo(() => ({ lang, setLang, t }), [lang, setLang, t]);
+
   return (
-    <LanguageContext.Provider value={{ lang, setLang, t }}>
+    <LanguageContext.Provider value={value}>
       {children}
     </LanguageContext.Provider>
   );

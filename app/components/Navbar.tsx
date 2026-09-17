@@ -70,14 +70,18 @@ export const Navbar: React.FC = () => {
           ))}
 
           {/* Language Toggle */}
-          <button
-            onClick={toggleLang}
+          <a
+            href={lang === "id" ? "/en" : "/id"}
+            onClick={(e) => {
+              e.preventDefault();
+              toggleLang();
+            }}
             className="ml-2 px-3 py-2 border-2 border-[#1A1A1A] rounded-md bg-[#FFFFFF] font-mono text-xs font-bold uppercase text-[#1A1A1A] hover:bg-[#FEFBF6] transition-all shadow-brutal-sm flex items-center gap-1.5 cursor-pointer"
             aria-label="Toggle language"
           >
             <Globe className="w-3.5 h-3.5" />
             {lang === "id" ? "EN" : "ID"}
-          </button>
+          </a>
         </nav>
 
         {/* Mobile Menu Button */}
@@ -108,13 +112,17 @@ export const Navbar: React.FC = () => {
             </a>
           ))}
           {/* Mobile Lang Toggle */}
-          <button
-            onClick={toggleLang}
+          <a
+            href={lang === "id" ? "/en" : "/id"}
+            onClick={(e) => {
+              e.preventDefault();
+              toggleLang();
+            }}
             className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-[#1A1A1A] rounded-md bg-[#FFFFFF] font-mono text-sm font-bold uppercase text-[#1A1A1A] shadow-brutal-sm cursor-pointer"
           >
             <Globe className="w-4 h-4" />
             {lang === "id" ? "English" : "Bahasa Indonesia"}
-          </button>
+          </a>
         </div>
       )}
     </header>
