@@ -21,16 +21,19 @@ function normalizePrivateKey(raw: string | undefined): string | undefined {
 
   let key = raw.trim();
 
+  // Strip trailing comma from JSON copy (outside quotes)
+  if (key.endsWith(",")) key = key.slice(0, -1).trim();
+
   // Strip surrounding quotes if the value was pasted verbatim from JSON.
   if (
     (key.startsWith('"') && key.endsWith('"')) ||
     (key.startsWith("'") && key.endsWith("'"))
   ) {
-    key = key.slice(1, -1);
+    key = key.slice(1, -1).trim();
   }
 
-  // Trailing comma from a partial JSON copy.
-  if (key.endsWith(",")) key = key.slice(0, -1);
+  // Trailing comma from a partial JSON copy (inside quotes)
+  if (key.endsWith(",")) key = key.slice(0, -1).trim();
 
   // Escaped newlines -> real newlines.
   key = key.replace(/\\n/g, "\n");
