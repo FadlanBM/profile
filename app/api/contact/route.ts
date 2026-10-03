@@ -27,20 +27,14 @@ export async function POST(request: Request) {
     const resend = new Resend(apiKey);
 
     // "from" must use a domain verified at resend.com/domains.
-    const from = process.env.RESEND_FROM_EMAIL;
-    if (!from) {
-      return NextResponse.json(
-        {
-          error:
-            "RESEND_FROM_EMAIL belum diset di Vercel (isi dengan email dari domain terverifikasi di Resend).",
-        },
-        { status: 500 }
-      );
-    }
+    // Fallback ke testing domain default Resend jika belum ada domain custom.
+    const from = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
+
+    const toEmail = process.env.CONTACT_RECEIVER_EMAIL || "zemcode2@gmail.com";
 
     const { data, error } = await resend.emails.send({
       from: `Portfolio Contact <${from}>`,
-      to: "fadlanbuwono@gmail.com",
+      to: toEmail,
       replyTo: email,
       subject: `Pesan dari ${name} via Portfolio`,
       text: `Nama: ${name}\nEmail: ${email}\n\nPesan:\n${message}`,
